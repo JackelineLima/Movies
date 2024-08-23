@@ -20,6 +20,8 @@ final class MoviesViewController: UIViewController {
     return UICollectionView(frame: .zero, collectionViewLayout: layout)
   }()
   
+  let service: MoviesServiceProtocol = MoviesService()
+  
   var upcomingMovies: [Movie] = [Movie(title: "Teste", imageName: ""),
                                  Movie(title: "Teste2", imageName: ""),
                                  Movie(title: "Teste3", imageName: ""),
@@ -37,7 +39,7 @@ final class MoviesViewController: UIViewController {
     collectionView.delegate = self
     collectionView.register(MovieCell.self, forCellWithReuseIdentifier: "MovieCell")
     
-    fetchMovies()
+    getPopularMovies()
   }
   
   private func setupViews() {
@@ -58,8 +60,15 @@ final class MoviesViewController: UIViewController {
     ])
   }
   
-  private func fetchMovies() {
-    // Fetch your movies here and reload the collectionView
+  private func getPopularMovies() {
+    service.getPopularMovies(page: 1) {[weak self] result in
+      switch result {
+      case .success(let popularMovies):
+        print(popularMovies)
+      case .failure(let error):
+        print(error)
+      }
+    }
   }
   
   @objc private func segmentChanged() {

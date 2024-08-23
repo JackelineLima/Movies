@@ -1,10 +1,3 @@
-//
-//  SceneDelegate.swift
-//  TheMovies
-//
-//  Created by Inpeaceapp on 23/08/24.
-//
-
 import UIKit
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
