@@ -2,9 +2,9 @@ import UIKit
 
 final class MovieDetailViewController: UIViewController {
   
-  private let movie: Movie
+  private let movie: MovieResponse
   
-  init(movie: Movie) {
+  init(movie: MovieResponse) {
     self.movie = movie
     super.init(nibName: nil, bundle: nil)
   }

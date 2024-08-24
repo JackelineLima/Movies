@@ -1,15 +1,27 @@
 import UIKit
 
+protocol MoviesViewDisplay: AnyObject {
+  func reloadData()
+  func showPaginationLoading()
+  func showLoading()
+  func hideLoading()
+  func didFail(with error: ErrorHandler)
+}
+
 final class MoviesViewController: UIViewController {
   
   private lazy var segmentedControl: UISegmentedControl = {
-    let control = UISegmentedControl(items: ["Upcoming", "Popular"])
+    let control = UISegmentedControl(items: ["Popular", "Upcoming"])
     control.selectedSegmentIndex = 0
+    control.selectedSegmentTintColor = .white
+    control.backgroundColor = .clear
+    control.setTitleTextAttributes([.foregroundColor: UIColor.white], for: .normal)
+    control.setTitleTextAttributes([.foregroundColor: UIColor.black], for: .selected)
     control.addTarget(self, action: #selector(segmentChanged), for: .valueChanged)
     return control
   }()
   
-  private let collectionView: UICollectionView = {
+  private lazy var collectionView: UICollectionView = {
     let layout = UICollectionViewFlowLayout()
     let spacing: CGFloat = 6
     let totalSpacing = spacing * 2
@@ -17,36 +29,40 @@ final class MoviesViewController: UIViewController {
     layout.itemSize = CGSize(width: width, height: width * 1.5)
     layout.minimumInteritemSpacing = spacing
     layout.minimumLineSpacing = spacing
-    return UICollectionView(frame: .zero, collectionViewLayout: layout)
+    layout.headerReferenceSize = CGSize(width: UIScreen.main.bounds.width, height: 50)
+    let collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
+    collectionView.dataSource = self
+    collectionView.delegate = self
+    collectionView.register(MovieCell.self, forCellWithReuseIdentifier: "MovieCell")
+    collectionView.register(MoviesHeaderView.self, forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: MoviesHeaderView.identifier)
+    collectionView.backgroundColor = .black.withAlphaComponent(0.5)
+    return collectionView
   }()
   
-  let service: MoviesServiceProtocol = MoviesService()
+  private let collectionViewFooter: UICollectionReusableView = {
+    let view = UICollectionReusableView()
+    return view
+  }()
   
-  var upcomingMovies: [Movie] = [Movie(title: "Teste", imageName: ""),
-                                 Movie(title: "Teste2", imageName: ""),
-                                 Movie(title: "Teste3", imageName: ""),
-                                 Movie(title: "Teste4", imageName: "")]
+  private let viewModel: MoviesViewModelDelegate
   
-  var popularMovies: [Movie] = [Movie(title: "Teste 2", imageName: "")]
-  var currentMovies: [Movie] {
-    return segmentedControl.selectedSegmentIndex == 0 ? upcomingMovies : popularMovies
+  init(viewModel: MoviesViewModelDelegate) {
+    self.viewModel = viewModel
+    super.init(nibName: nil, bundle: nil)
+  }
+  
+  required init?(coder: NSCoder) {
+    fatalError("init(coder:) has not been implemented")
   }
   
   override func viewDidLoad() {
     super.viewDidLoad()
     setupViews()
-    collectionView.dataSource = self
-    collectionView.delegate = self
-    collectionView.register(MovieCell.self, forCellWithReuseIdentifier: "MovieCell")
-    
-    getPopularMovies()
+    loadData()
   }
   
   private func setupViews() {
-    view.addSubview(segmentedControl)
-    view.addSubview(collectionView)
-    segmentedControl.translatesAutoresizingMaskIntoConstraints = false
-    collectionView.translatesAutoresizingMaskIntoConstraints = false
+    view.addSubviews(segmentedControl, collectionView)
     
     NSLayoutConstraint.activate([
       segmentedControl.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
@@ -60,38 +76,88 @@ final class MoviesViewController: UIViewController {
     ])
   }
   
-  private func getPopularMovies() {
-    service.getPopularMovies(page: 1) {[weak self] result in
-      switch result {
-      case .success(let popularMovies):
-        print(popularMovies)
-      case .failure(let error):
-        print(error)
-      }
+  @objc private func segmentChanged() {
+    viewModel.selectedSegmentIndex = segmentedControl.selectedSegmentIndex
+  }
+  
+  private func loadData() {
+    viewModel.loadPopularMovies()
+  }
+}
+
+extension MoviesViewController: MoviesViewDisplay, Loadable, Alertable {
+  func showLoading() {
+    DispatchQueue.main.async { [weak self] in
+      guard let self = self else { return }
+      self.showSpinner(on: self.view)
     }
   }
   
-  @objc private func segmentChanged() {
-    collectionView.reloadData()
+  func hideLoading() {
+    DispatchQueue.main.async { [weak self] in
+      guard let self = self else { return }
+      self.removeSpinner(on: self.view)
+      self.removeSpinner(on: self.collectionViewFooter)
+    }
+  }
+  
+  func showPaginationLoading() {
+    DispatchQueue.main.async { [weak self] in
+      guard let self = self else { return }
+      self.showSpinner(on: self.collectionViewFooter, size: .large)
+    }
+  }
+  
+  func reloadData() {
+    DispatchQueue.main.async { [weak self] in
+      self?.collectionView.reloadData()
+    }
+  }
+  
+  func didFail(with error: ErrorHandler) {
+    DispatchQueue.main.async { [weak self] in
+      guard let self = self else { return }
+      self.showActionAlert(
+        message: error.customMessage,
+        action: self.loadData
+      )
+    }
   }
 }
 
 extension MoviesViewController: UICollectionViewDataSource, UICollectionViewDelegate {
-  
   func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-    return currentMovies.count
+    return viewModel.numberOfRows()
   }
   
   func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
     let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "MovieCell", for: indexPath) as! MovieCell
-    let movie = currentMovies[indexPath.item]
-    cell.configure(with: movie)
+    let movie = viewModel.getMovie(at: indexPath)
+   
+    cell.setup(with: movie)
     return cell
   }
   
   func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-    let movie = currentMovies[indexPath.item]
-    let detailVC = MovieDetailViewController(movie: movie)
-    navigationController?.pushViewController(detailVC, animated: true)
+    viewModel.didSelectItem(at: indexPath)
+  }
+  
+  func collectionView(_ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
+    let lastSection = collectionView.numberOfSections - 1
+    let lastItem = collectionView.numberOfItems(inSection: lastSection) - 1
+    if indexPath.section == lastSection && indexPath.row == lastItem {
+      viewModel.userRequestedMoreData()
+    }
+  }
+  
+  func collectionView(_ collectionView: UICollectionView, viewForSupplementaryElementOfKind kind: String, at indexPath: IndexPath) -> UICollectionReusableView {
+    guard kind == UICollectionView.elementKindSectionHeader else {
+      return UICollectionReusableView()
+    }
+    
+    guard let headerView = collectionView.dequeueReusableSupplementaryView(ofKind: kind, withReuseIdentifier: MoviesHeaderView.identifier, for: indexPath) as? MoviesHeaderView else { return UICollectionReusableView() }
+    headerView.configure(with: viewModel.getTitle())
+    return headerView
   }
 }
+
