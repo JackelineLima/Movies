@@ -1,10 +1,3 @@
-//
-//  TheMoviesTests.swift
-//  TheMoviesTests
-//
-//  Created by Inpeaceapp on 23/08/24.
-//
-
 import XCTest
 @testable import TheMovies
 
