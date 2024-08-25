@@ -14,6 +14,7 @@ final class MoviesViewModel: MoviesViewModelDelegate {
   
   weak var delegate: MoviesViewDisplay?
   private let service: MoviesServiceProtocol
+  private let coordinator: MoviesCoordinating
   private var currentPage: Int = 1
   private var isLoading = false
   private var upcomingMovies: [MovieResponse] = []
@@ -29,8 +30,9 @@ final class MoviesViewModel: MoviesViewModelDelegate {
     return selectedSegmentIndex == 0 ? popularMovies : upcomingMovies
   }
   
-  init(service: MoviesServiceProtocol = MoviesService()) {
+  init(service: MoviesServiceProtocol = MoviesService(), coordinator: MoviesCoordinating) {
     self.service = service
+    self.coordinator = coordinator
   }
   
   func getMovie(at indexPath: IndexPath) -> MovieResponse {
@@ -47,7 +49,7 @@ final class MoviesViewModel: MoviesViewModelDelegate {
   
   func didSelectItem(at indexPath: IndexPath) {
     let movie = getMovie(at: indexPath)
-    // Navegar para a tela de detalhes
+    coordinator.goToMovieDetails(with: movie)
   }
   
   func loadPopularMovies() {

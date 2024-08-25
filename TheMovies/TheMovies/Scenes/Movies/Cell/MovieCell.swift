@@ -13,13 +13,15 @@ final class MovieCell: UICollectionViewCell {
     label.font = UIFont.systemFont(ofSize: 14, weight: .bold)
     label.textAlignment = .center
     label.numberOfLines = 2
+    label.textColor = .white
     return label
   }()
   
   private let dateLabel: UILabel = {
     let label = UILabel()
-    label.font = UIFont.systemFont(ofSize: 10, weight: .bold)
+    label.font = UIFont.systemFont(ofSize: 14, weight: .bold)
     label.textAlignment = .center
+    label.textColor = .white
     return label
   }()
   
@@ -39,10 +41,8 @@ final class MovieCell: UICollectionViewCell {
       from: viewModel.posterImageURL,
       placeholder: UIImage(named: Constants.Images.posterPlaceholder)
     )
-    dateLabel.text = model.releaseDate
+    dateLabel.text = model.releaseDate?.toBrazilianDateFormat()
     titleLabel.text = model.title
-    titleLabel.textColor = .red
-    dateLabel.textColor = .white
   }
 }
 
