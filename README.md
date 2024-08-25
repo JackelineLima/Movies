@@ -10,3 +10,5 @@ Este projeto é um aplicativo iOS que consome a API do The Movie Database (TMDb)
 </p>
 
 ## Preview
+![Simulator Screen Recording - iPhone 15 Pro - 2024-08-25 at 19 30 01](https://github.com/user-attachments/assets/2a1065ae-fab6-4c29-9f8b-5128910a356e)
+
